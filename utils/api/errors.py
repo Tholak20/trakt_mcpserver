@@ -7,9 +7,7 @@ from typing import (
     Any,
     Concatenate,
     Final,
-    ParamSpec,
     Protocol,
-    TypeVar,
     runtime_checkable,
 )
 
@@ -28,11 +26,6 @@ INVALID_REQUEST: Final[int] = -32600
 METHOD_NOT_FOUND: Final[int] = -32601
 INVALID_PARAMS: Final[int] = -32602
 INTERNAL_ERROR: Final[int] = -32603
-
-# Type variables
-P = ParamSpec("P")
-R = TypeVar("R")
-Self = TypeVar("Self")
 
 
 @runtime_checkable
@@ -176,7 +169,7 @@ def _build_error_data(
     return error_data
 
 
-async def _execute_with_error_handling(
+async def _execute_with_error_handling[R](
     coro: Awaitable[R],
     *,
     on_401: Callable[[], None] | None = None,
@@ -274,9 +267,9 @@ async def _execute_with_error_handling(
         ) from e
 
 
-def handle_api_errors(
-    method: Callable[Concatenate[Self, P], Awaitable[R]],
-) -> Callable[Concatenate[Self, P], Awaitable[R | str]]:
+def handle_api_errors[OwnerT, **P, R](
+    method: Callable[Concatenate[OwnerT, P], Awaitable[R]],
+) -> Callable[Concatenate[OwnerT, P], Awaitable[R | str]]:
     """Handle API errors for class methods with perfect type inference.
 
     This decorator is specifically designed for methods (functions with
@@ -294,7 +287,7 @@ def handle_api_errors(
     """
 
     @functools.wraps(method)
-    async def wrapper(self: Self, /, *args: P.args, **kwargs: P.kwargs) -> R | str:
+    async def wrapper(self: OwnerT, /, *args: P.args, **kwargs: P.kwargs) -> R | str:
         try:
             # First attempt — do NOT clear token on 401 so refresh can recover
             return await _execute_with_error_handling(
@@ -341,7 +334,7 @@ def handle_api_errors(
     return wrapper
 
 
-def handle_api_errors_func(
+def handle_api_errors_func[**P, R](
     func: Callable[P, Awaitable[R]],
 ) -> Callable[P, Awaitable[R | str]]:
     """Handle API errors for standalone functions with perfect type inference.

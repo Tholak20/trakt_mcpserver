@@ -2,6 +2,7 @@
 
 ![MCP Trakt](https://img.shields.io/badge/MCP-Trakt-ff69b4)
 ![Built by AI+Humans](https://img.shields.io/badge/Built%20by-AI%2BHumans-blue)
+![Version](https://img.shields.io/github/v/release/wwiens/trakt_mcpserver?label=version)
 ![Powered by Claude](https://img.shields.io/badge/Powered%20by-Claude-blueviolet)
 
 A Model Context Protocol (MCP) server that creates a bridge between AI language models and the Trakt.tv API, allowing LLMs to access real-time entertainment data and personal Trakt viewing history. Built with a domain-focused architecture using FastMCP, providing clean separation of concerns across authentication, shows, seasons, episodes, movies, people, user data, comments, search, and check-in functionality.
@@ -27,15 +28,17 @@ docker run -d --rm --name trakt_mcpserver \
 
 ### Local Installation
 
+Requires Python 3.12 or newer.
+
 1. **Clone this repository**
    ```bash
-   git clone https://github.com/yourusername/mcp-trakt.git
-   cd mcp-trakt
+   git clone https://github.com/wwiens/trakt_mcpserver.git
+   cd trakt_mcpserver
    ```
 
 2. **Install dependencies**
    ```bash
-   pip install -r requirements.txt
+   pip install -e .
    ```
 
 3. **Set up your environment**
@@ -767,16 +770,17 @@ You can log out at any time using the `clear_auth` tool.
 
 ## 🐳 Docker Deployment
 
-Two Docker images are available with different transport mechanisms:
+Two Docker images are available with different transport mechanisms. Each release also publishes a versioned tag (e.g. `:0.9.0`, `:0.9.0-stdio`) for pinning.
 
 | Image Tag | Transport | Use Case |
 |-----------|-----------|----------|
 | `:latest` | SSE (HTTP) | Remote access, web clients, docker-compose |
-| `:stdio` | stdio | MCPhub, Claude Desktop, local MCP clients |
+| `:latest-stdio` | stdio | MCPhub, Claude Desktop, local MCP clients |
+| `:stdio` | stdio | **Deprecated alias for `:latest-stdio` — will be removed at v1.0.0** |
 
 ### stdio Transport (MCPhub, Claude Desktop)
 
-Use the `:stdio` image for MCP clients that communicate via stdin/stdout:
+Use the `:latest-stdio` image (or pin a version like `:0.9.0-stdio`) for MCP clients that communicate via stdin/stdout:
 
 ```bash
 # Pull and run the stdio image
@@ -784,7 +788,7 @@ docker run -i --rm --name trakt_mcpserver_stdio \
   -e TRAKT_CLIENT_ID=your_client_id \
   -e TRAKT_CLIENT_SECRET=your_client_secret \
   -v trakt_auth:/data \
-  ghcr.io/wwiens/trakt_mcpserver:stdio
+  ghcr.io/wwiens/trakt_mcpserver:latest-stdio
 ```
 
 **Claude Desktop configuration:**
@@ -798,7 +802,7 @@ docker run -i --rm --name trakt_mcpserver_stdio \
         "-e", "TRAKT_CLIENT_ID=your_client_id",
         "-e", "TRAKT_CLIENT_SECRET=your_client_secret",
         "-v", "trakt_auth:/data",
-        "ghcr.io/wwiens/trakt_mcpserver:stdio"
+        "ghcr.io/wwiens/trakt_mcpserver:latest-stdio"
       ]
     }
   }
@@ -877,7 +881,8 @@ Ensure code quality with pytest, type checking, and linting before making change
 <summary><strong>View test commands</strong></summary>
 
 ```bash
-# Install test dependencies
+# Install the project (editable) and test dependencies
+pip install -e .
 pip install -r requirements-dev.txt
 
 # Run all tests

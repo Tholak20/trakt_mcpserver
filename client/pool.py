@@ -15,17 +15,15 @@ from __future__ import annotations
 
 import inspect
 import threading
-from typing import TypeGuard, TypeVar
+from typing import TypeGuard
 
 import httpx
 
 from .auth import AuthClient
 from .base import BaseClient
 
-T = TypeVar("T", bound=BaseClient)
 
-
-def _is_instance_of(obj: object, cls: type[T]) -> TypeGuard[T]:
+def _is_instance_of[T: BaseClient](obj: object, cls: type[T]) -> TypeGuard[T]:
     """TypeGuard wrapper — ``isinstance(obj, cls)`` alone does not bind ``T``."""
     return isinstance(obj, cls)
 
@@ -49,7 +47,7 @@ def get_or_create_shared_http() -> httpx.AsyncClient:
         return _shared_http
 
 
-def get_client(cls: type[T]) -> T:
+def get_client[T: BaseClient](cls: type[T]) -> T:
     """Return a pooled client for the given class.
 
     For ``AuthClient`` subclasses, returns a fresh wrapper per call so each

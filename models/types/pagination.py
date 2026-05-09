@@ -1,13 +1,8 @@
 """Pagination models for Trakt API responses."""
 
-from typing import Generic, TypeVar
-
 from pydantic import BaseModel, Field, PositiveInt
 
 from config.api import DEFAULT_LIMIT
-
-# Generic type for pagination data
-T = TypeVar("T")
 
 
 class PaginationParams(BaseModel):
@@ -70,7 +65,7 @@ class PaginationMetadata(BaseModel):
         return self.current_page - 1 if self.has_previous_page else None
 
 
-class PaginatedResponse(BaseModel, Generic[T]):
+class PaginatedResponse[T](BaseModel):
     """Generic wrapper for paginated API responses.
 
     Combines the actual data with pagination metadata for easier
