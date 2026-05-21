@@ -43,7 +43,7 @@ RUN mkdir -p /data && chown -R appuser:appuser /data
 # Change ownership of application files to non-root user
 RUN chown -R appuser:appuser /app
 
-# Environment variables (pass at runtime via -e or --env-file)
+# Environment variables (pass at runtime via -e ou --env-file)
 ENV TRAKT_CLIENT_ID=""
 ENV TRAKT_CLIENT_SECRET=""
 ENV TRAKT_AUTH_TOKEN_PATH=/data/auth_token.json
@@ -51,15 +51,9 @@ ENV TRAKT_AUTH_TOKEN_PATH=/data/auth_token.json
 # Expose SSE port (will be overridden by runtime environment)
 EXPOSE 8080
 
-# Declare volume for auth token persistence across container restarts
-VOLUME /data
-
 # Switch to non-root user
 USER appuser
 
 # Run as: SSE proxy on 0.0.0.0:8080 -> spawn local stdio server
-# --port fixes the listening port (default would be random if omitted)
-# --pass-environment forwards TRAKT_* vars to the child process
-# `--` separates proxy args from child args
 ENTRYPOINT ["mcp-proxy"]
 CMD ["--host", "0.0.0.0", "--port", "8080", "--pass-environment", "--", "python3", "/app/trakt_mcpserver/server.py"]
