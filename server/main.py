@@ -28,6 +28,7 @@ from .shows import register_show_resources, register_show_tools
 from .sync import register_sync_tools
 from .user import register_user_resources, register_user_tools
 from .lists import register_list_tools
+from .favorites import register_favorites_tools
 
 # Set up logging
 logging.basicConfig(
@@ -54,6 +55,7 @@ REGISTRATIONS: Final[tuple[Callable[[FastMCP], object], ...]] = (
     register_episode_tools,
     register_people_tools,
     register_list_tools,
+    register_favorites_tools,
     register_basic_prompts,
 )
 
