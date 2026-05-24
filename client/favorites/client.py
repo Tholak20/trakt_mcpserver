@@ -10,7 +10,7 @@ class UserFavoritesClient(AuthClient):
     async def get_user_favorites(self, item_type: str | None = None) -> list:
         if not await self.ensure_authenticated():
             raise AuthenticationRequiredError(action="fetch user favorites")
-        path = "/users/me/favorites"
+        path = "/users/Tolak/favorites"
         if item_type:
             path += f"/{item_type}"
         return await self._make_list_request(path)
