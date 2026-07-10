@@ -23,16 +23,21 @@ RUN addgroup -g 1000 -S appuser && \
 WORKDIR /app/trakt_mcpserver
 
 # Layer 1 — deps from pyproject.toml only (cache key is pyproject.toml)
+# NOTE: use "python3 -m pip" (not the bare "pip3" binary) so the packages are
+# installed into the exact same interpreter that later runs server.py via
+# CMD's "python3" — the base image also ships its own Python in /app/.venv,
+# and a bare "pip3" call can resolve to that one instead, silently installing
+# dependencies where the app can't see them at runtime.
 COPY pyproject.toml ./
 RUN python3 -c "import tomllib; \
 print('\n'.join(tomllib.load(open('pyproject.toml','rb'))['project']['dependencies']))" \
       > /tmp/requirements.txt \
-    && pip3 install --no-cache-dir --break-system-packages -r /tmp/requirements.txt \
+    && python3 -m pip install --no-cache-dir --break-system-packages -r /tmp/requirements.txt \
     && rm /tmp/requirements.txt
 
 # Layer 2 — source + project metadata install (deps already satisfied)
 COPY . .
-RUN pip3 install --no-cache-dir --break-system-packages --no-deps .
+RUN python3 -m pip install --no-cache-dir --break-system-packages --no-deps .
 
 # Back to root workdir
 WORKDIR /app
