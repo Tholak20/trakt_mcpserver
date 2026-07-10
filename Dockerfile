@@ -37,16 +37,16 @@ RUN pip3 install --no-cache-dir --break-system-packages --no-deps .
 # Back to root workdir
 WORKDIR /app
 
-# Create data directory for auth token persistence
-RUN mkdir -p /data && chown -R appuser:appuser /data
-
 # Change ownership of application files to non-root user
 RUN chown -R appuser:appuser /app
 
 # Environment variables (pass at runtime via -e ou --env-file)
 ENV TRAKT_CLIENT_ID=""
 ENV TRAKT_CLIENT_SECRET=""
-ENV TRAKT_AUTH_TOKEN_PATH=/data/auth_token.json
+# Auth token is persisted in Neon (see client/auth/storage.py), not on local
+# disk — required because Render's free tier has no persistent disk across
+# container restarts. Set the real value at runtime via Render env vars.
+ENV NEON_DATABASE_URL=""
 
 # Expose SSE port (will be overridden by runtime environment)
 EXPOSE 8080
