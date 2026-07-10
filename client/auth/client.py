@@ -1,13 +1,9 @@
 """Authentication client for Trakt API."""
 
 import asyncio
-import contextlib
-import json
 import logging
-import os
 import threading
 import time
-from typing import Final
 
 from config.auth import OAUTH_REDIRECT_URI
 from config.endpoints import TRAKT_ENDPOINTS
@@ -20,12 +16,9 @@ from utils.api.errors import (
 )
 
 from ..base import BaseClient
+from . import storage
 
 logger = logging.getLogger(__name__)
-
-# User authentication token storage path
-# Docker sets TRAKT_AUTH_TOKEN_PATH for volume-based persistence
-AUTH_TOKEN_FILE: Final[str] = os.environ.get("TRAKT_AUTH_TOKEN_PATH", "auth_token.json")
 
 
 class AuthClient(BaseClient):
@@ -45,44 +38,12 @@ class AuthClient(BaseClient):
             self._update_headers_with_token()
 
     def _load_auth_token(self) -> TraktAuthToken | None:
-        """Load authentication token from storage."""
-        if os.path.exists(AUTH_TOKEN_FILE):
-            try:
-                with open(AUTH_TOKEN_FILE, encoding="utf-8") as f:
-                    token_data = json.load(f)
-                    return TraktAuthToken.model_validate(token_data)
-            except Exception:
-                logger.exception("Error loading auth token from %s", AUTH_TOKEN_FILE)
-        return None
+        """Load authentication token from Neon."""
+        return storage.load_token()
 
     def _save_auth_token(self, token: TraktAuthToken) -> None:
-        """Save authentication token to storage."""
-        # Create file with secure permissions (user read/write only) using
-        # an atomic write-then-replace to avoid partial files.
-        # Ensure parent directory exists if there is one
-        parent_dir = os.path.dirname(AUTH_TOKEN_FILE)
-        if parent_dir:
-            os.makedirs(parent_dir, exist_ok=True)
-        tmp_path = f"{AUTH_TOKEN_FILE}.tmp"
-        fd = os.open(tmp_path, os.O_CREAT | os.O_WRONLY | os.O_TRUNC, 0o600)
-        try:
-            try:
-                file_obj = os.fdopen(fd, "w", encoding="utf-8")
-            except Exception:
-                with contextlib.suppress(OSError):
-                    os.close(fd)
-                raise
-            with file_obj:
-                file_obj.write(token.model_dump_json())
-                file_obj.flush()
-                # fsync may not be available on all file objects or platforms
-                with contextlib.suppress(OSError, AttributeError, TypeError):
-                    os.fsync(file_obj.fileno())
-            os.replace(tmp_path, AUTH_TOKEN_FILE)
-        except Exception:
-            with contextlib.suppress(OSError):
-                os.remove(tmp_path)
-            raise
+        """Save authentication token to Neon."""
+        storage.save_token(token)
 
     def is_authenticated(self) -> bool:
         """Check if the client is authenticated."""
@@ -148,7 +109,7 @@ class AuthClient(BaseClient):
         """Refresh the access token using the stored refresh token.
 
         Exchanges the refresh_token for a new access_token via the Trakt
-        OAuth token endpoint. On success, saves the new token pair to disk.
+        OAuth token endpoint. On success, saves the new token pair to Neon.
 
         Thread-safe: Uses an async lock to prevent concurrent refresh attempts
         from racing and invalidating each other's tokens.
@@ -197,7 +158,7 @@ class AuthClient(BaseClient):
                 return False
             except (MCPError, OSError, ValueError):
                 # Transient / local errors: InternalError (network/timeout),
-                # OSError (file I/O), ValueError (validation).
+                # OSError (Neon I/O), ValueError (validation).
                 # Keep the refresh token so the next attempt can succeed.
                 logger.warning(
                     "Failed to refresh access token (transient"
@@ -239,20 +200,16 @@ class AuthClient(BaseClient):
                 return False
 
             # Always clear in-memory state first
-            # (handles case where file was deleted externally)
+            # (handles case where the Neon row was deleted externally)
             self.auth_token = None
             if "Authorization" in self.headers:
                 del self.headers["Authorization"]
 
-            # Attempt to remove file (suppress if already deleted)
             try:
-                os.remove(AUTH_TOKEN_FILE)
-            except FileNotFoundError:
-                pass
-            except OSError:
+                storage.clear_token()
+            except Exception:
                 logger.warning(
-                    "Failed to remove auth token file %s; orphaned file may remain",
-                    AUTH_TOKEN_FILE,
+                    "Failed to clear auth token in Neon; orphaned row may remain",
                     exc_info=True,
                 )
 
