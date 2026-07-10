@@ -23,21 +23,23 @@ RUN addgroup -g 1000 -S appuser && \
 WORKDIR /app/trakt_mcpserver
 
 # Layer 1 — deps from pyproject.toml only (cache key is pyproject.toml)
-# NOTE: use "python3 -m pip" (not the bare "pip3" binary) so the packages are
-# installed into the exact same interpreter that later runs server.py via
-# CMD's "python3" — the base image also ships its own Python in /app/.venv,
-# and a bare "pip3" call can resolve to that one instead, silently installing
-# dependencies where the app can't see them at runtime.
+# NOTE: use the absolute path /usr/bin/python3 (the Alpine interpreter we
+# just installed via apk), never the bare "python3" command. The base image
+# also ships its own Python in /app/.venv (no pip installed there at all),
+# and PATH resolves bare "python3"/"pip3" to that one instead — silently
+# installing dependencies where the app can't see them at runtime, or
+# failing outright with "No module named pip". Using the absolute path here
+# AND in CMD below guarantees both steps target the exact same interpreter.
 COPY pyproject.toml ./
-RUN python3 -c "import tomllib; \
+RUN /usr/bin/python3 -c "import tomllib; \
 print('\n'.join(tomllib.load(open('pyproject.toml','rb'))['project']['dependencies']))" \
       > /tmp/requirements.txt \
-    && python3 -m pip install --no-cache-dir --break-system-packages -r /tmp/requirements.txt \
+    && /usr/bin/python3 -m pip install --no-cache-dir --break-system-packages -r /tmp/requirements.txt \
     && rm /tmp/requirements.txt
 
 # Layer 2 — source + project metadata install (deps already satisfied)
 COPY . .
-RUN python3 -m pip install --no-cache-dir --break-system-packages --no-deps .
+RUN /usr/bin/python3 -m pip install --no-cache-dir --break-system-packages --no-deps .
 
 # Back to root workdir
 WORKDIR /app
@@ -60,5 +62,6 @@ EXPOSE 8080
 USER appuser
 
 # Run as: SSE proxy on 0.0.0.0:8080 -> spawn local stdio server
+# Use the absolute interpreter path here too, matching the install steps above.
 ENTRYPOINT ["mcp-proxy"]
-CMD ["--host", "0.0.0.0", "--port", "8080", "--pass-environment", "--", "python3", "/app/trakt_mcpserver/server.py"]
+CMD ["--host", "0.0.0.0", "--port", "8080", "--pass-environment", "--", "/usr/bin/python3", "/app/trakt_mcpserver/server.py"]
