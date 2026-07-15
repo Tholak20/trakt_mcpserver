@@ -1,0 +1,48 @@
+/**
+ * Configuration Wrangler du Worker MCP Trakt.
+ *
+ * Deux systèmes d'auth :
+ *  - Façade OAuth GitHub (KV OAUTH_KV) : protège QUI peut appeler le MCP.
+ *  - OAuth Trakt device flow (KV TRAKT_TOKENS) : accès au compte Trakt de Thomas.
+ *
+ * Secrets à poser via `wrangler secret put` (jamais committés) :
+ *   GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET, COOKIE_ENCRYPTION_KEY,
+ *   TRAKT_CLIENT_ID, TRAKT_CLIENT_SECRET
+ */
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "trakt-mcp",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-07-15",
+  "compatibility_flags": ["nodejs_compat"],
+  "migrations": [
+    {
+      "new_sqlite_classes": ["TraktMCP"],
+      "tag": "v1",
+    },
+  ],
+  "durable_objects": {
+    "bindings": [
+      {
+        "class_name": "TraktMCP",
+        "name": "MCP_OBJECT",
+      },
+    ],
+  },
+  "kv_namespaces": [
+    {
+      "binding": "OAUTH_KV",
+      "id": "9dd06247c8d44ce8bd707144475ac66a",
+    },
+    {
+      "binding": "TRAKT_TOKENS",
+      "id": "05737f15e3f342dc9101149a900d3cd2",
+    },
+  ],
+  "observability": {
+    "enabled": true,
+  },
+  "dev": {
+    "port": 8790,
+  },
+}
