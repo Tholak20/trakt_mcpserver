@@ -108,3 +108,12 @@ auth_token.json
 auth_token.json.tmp
 
 phase-runner-script.sh
+
+# Node / Cloudflare Workers
+node_modules/
+.wrangler/
+dist/
+.dev.vars
+worker-configuration.d.ts
+.DS_Store
+*.log
